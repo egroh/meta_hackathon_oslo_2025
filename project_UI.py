@@ -4,6 +4,40 @@ import numpy as np
 from streamlit.components.v1 import html
 import json
 
+# Set page config
+st.set_page_config(layout="wide")
+# st.title("Insert Title Here")
+
+def home_page():
+    st.title("Dashboard")
+    col1, col2 = st.columns([2, 3])
+    
+    with col1:
+        st.header("Chat Window")
+        html(html_code, height=700, scrolling=True)
+    
+    with col2:
+        st.header("Graphs and Analysis")
+        st.pyplot(generate_graph())
+    
+    user_input = st.text_input("Type your message here...", key="input")
+    if user_input:
+        handle_input(user_input)
+
+def about_page():
+    st.title("About")
+    st.write("""
+    ### Project Description
+    """)
+
+def contact_page():
+    st.title("Contact")
+    st.write("""
+    ### Insert our information here
+    """)
+
+page = st.sidebar.radio("Navigate", ["Home", "About", "Contact"])
+
 # Functions to generated stuff
 def generate_graph():
     x = np.linspace(0, 10, 100)
@@ -13,7 +47,6 @@ def generate_graph():
     ax.set_title('Sine Wave')
     return fig
 
-# Function to handle input text
 def handle_input(user_input):
     if user_input:
         # Add LLama interactions here
@@ -56,15 +89,8 @@ chat_data = {
     ]
 }
 
-
-# Layout of the page
-st.set_page_config(layout="wide")
-st.title("Insert Title Here")
-col1, col2 = st.columns([2, 3])
-
 #import data
 chat_data_json = json.dumps(chat_data)
-
 html_code = f"""
 <!DOCTYPE html>
 <html lang='en'>
@@ -138,20 +164,10 @@ html_code = f"""
 </html>
 """
 
-# Scrollable Chat window
-with col1:
-    st.header("Chat Window")
-    html(html_code, height=700, scrolling=True) # Increased height to accommodate padding
-
-# Analysis and Graph window
-with col2:
-    st.header("Graphs and Analysis")
-    st.pyplot(generate_graph())
-
-# Input bar at the bottom
-user_input = st.text_input("Type your message here...", key="input")
-if user_input:
-    handle_input(user_input)
-
-#ADD meqssages in the chat box
-st.session_state.chat_history.append("user_input1\n")
+# Page Router
+if page == "Home":
+    home_page()
+elif page == "About":
+    about_page()
+elif page == "Contact":
+    contact_page()
