@@ -5,26 +5,23 @@ import numpy as np
 from streamlit.components.v1 import html
 import json
 
-# Set page config
+# Initialize the ZeroRPC client once (cache it to avoid reconnecting every request)
+@st.cache_resource
+def get_client():
+    client = zerorpc.Client(timeout=300, heartbeat=60)  # or bigger
+    client.connect("tcp://89.169.96.185:4242")
+    return client
+
+
+def query_llama_sync(user_input):
+    """Synchronous function to handle the query to the backend."""
+    if not user_input:
+        return ""
+    client = get_client()
+    return client.query_llama(user_input)
+
+# Set up page configuration
 st.set_page_config(layout="wide")
-# st.title("Insert Title Here")
-
-def home_page():
-    st.title("Dashboard")
-    col1, col2 = st.columns([2, 3])
-
-    with col1:
-        st.header("Chat Window")
-        html(html_code, height=700, scrolling=True)
-
-    with col2:
-        st.header("Graphs and Analysis")
-        st.pyplot(generate_graph())
-
-    user_input = st.text_input("Type your message here...", key="input")
-    if user_input:
-        response = client.query_llama(user_input)  # Query the backend
-        st.session_state.chat_history.append(f"User: {user_input}\nAI: {response}\n")
 
 
 def about_page():
@@ -90,8 +87,9 @@ chat_data = {
     ]
 }
 
-#import data
 chat_data_json = json.dumps(chat_data)
+
+# HTML template for chat demonstration
 html_code = f"""
 <!DOCTYPE html>
 <html lang='en'>
@@ -165,10 +163,74 @@ html_code = f"""
 </html>
 """
 
-# Page Router
-if page == "Home":
-    home_page()
-elif page == "About":
-    about_page()
-elif page == "Contact":
-    contact_page()
+# If you want to store chat history across the app
+if 'chat_history' not in st.session_state:
+    st.session_state.chat_history = []
+if 'loading' not in st.session_state:
+    st.session_state.loading = False
+
+def generate_graph():
+    """Generate and return a simple sine-wave plot figure."""
+    x = np.linspace(0, 10, 100)
+    y = np.sin(x)
+    fig, ax = plt.subplots()
+    ax.plot(x, y, label='Sine Wave')
+    ax.set_xlabel('X')
+    ax.set_ylabel('sin(X)')
+    ax.set_title('Sine Wave')
+    ax.legend()
+    return fig
+
+def home_page():
+    st.title("Dashboard")
+    col1, col2 = st.columns([2, 3])
+
+    with col1:
+        st.header("Chat Window")
+        html(html_code, height=700, scrolling=True)
+
+        # Input and Submit
+        user_input = st.text_input("Type your message here...")
+        if user_input:
+            st.session_state.loading = True
+            with st.spinner("Processing your message..."):
+                response = query_llama_sync(user_input)
+                st.session_state.chat_history.append(f"**User:** {user_input}\n**AI:** {response}\n")
+            st.session_state.loading = False
+
+        # Display chat history (optional) below the input
+        if st.session_state.chat_history:
+            st.subheader("Chat History")
+            for chat in st.session_state.chat_history:
+                st.markdown(chat)
+
+    with col2:
+        st.header("Graphs and Analysis")
+        st.pyplot(generate_graph())
+
+def about_page():
+    st.title("About")
+    st.markdown("""
+    ### Project Description
+    Provide an overview of your project's goals, features, and technologies.
+    """)
+
+def contact_page():
+    st.title("Contact")
+    st.markdown("""
+    ### Team & Contact
+    - Email: team@example.com
+    - GitHub: [Repo Link](https://github.com/...)
+    """)
+
+def main():
+    page = st.sidebar.radio("Navigate", ["Home", "About", "Contact"])
+    if page == "Home":
+        home_page()
+    elif page == "About":
+        about_page()
+    elif page == "Contact":
+        contact_page()
+
+if __name__ == "__main__":
+    main()

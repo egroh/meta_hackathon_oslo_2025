@@ -12,7 +12,9 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 Settings.embed_model = HuggingFaceEmbedding(model_name="BAAI/bge-base-en-v1.5")
 
 # Model and Tokenizer (Using 4-bit Quantization)
-model_name = "meta-llama/Llama-3.3-70B-Instruct"
+
+model_name = "mistralai/Mistral-7B-Instruct-v0.1"
+# model_name = "meta-llama/Llama-3.3-70B-Instruct"
 hf_token = "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"
 
 bnb_config = BitsAndBytesConfig(
@@ -57,9 +59,13 @@ print("Llama model initialized and ready for queries.")
 class Backend:
     def query_llama(self, user_input):
         """Handles Llama model queries."""
+        print("Got llama query:")
         if user_input:
             response = query_engine.query(user_input)
+            print("Sending Answer.")
             return str(response)
+        else:
+            print("Empty request.")
 
     def generate_graph(self):
         """Generates a sine wave graph and returns it as a base64-encoded image."""
@@ -77,7 +83,7 @@ class Backend:
         return encoded_img
 
 # Start ZeroRPC server
-server = zerorpc.Server(Backend())
+server = zerorpc.Server(Backend(), heartbeat=60)
 server.bind("tcp://0.0.0.0:4242")
 print("Backend server is running...")
 server.run()
