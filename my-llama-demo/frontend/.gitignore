@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+.Ds_Store
+.my-llama-demo/frontend/.DS_Store
+.my-llama-demo/backend/.DS_Store
