@@ -1,4 +1,5 @@
 import streamlit as st
+import zerorpc
 import matplotlib.pyplot as plt
 import numpy as np
 from streamlit.components.v1 import html
@@ -11,18 +12,20 @@ st.set_page_config(layout="wide")
 def home_page():
     st.title("Dashboard")
     col1, col2 = st.columns([2, 3])
-    
+
     with col1:
         st.header("Chat Window")
         html(html_code, height=700, scrolling=True)
-    
+
     with col2:
         st.header("Graphs and Analysis")
         st.pyplot(generate_graph())
-    
+
     user_input = st.text_input("Type your message here...", key="input")
     if user_input:
-        handle_input(user_input)
+        response = client.query_llama(user_input)  # Query the backend
+        st.session_state.chat_history.append(f"User: {user_input}\nAI: {response}\n")
+
 
 def about_page():
     st.title("About")
@@ -47,13 +50,11 @@ def generate_graph():
     ax.set_title('Sine Wave')
     return fig
 
-def handle_input(user_input):
-    if user_input:
-        # Add LLama interactions here
-        None
+# Connect to the backend via ZeroRPC
+client = zerorpc.Client()
+client.connect("tcp://127.0.0.1:4242")
 
-
-# Initialize variables 
+# Initialize variables
 if 'chat_history' not in st.session_state:
     st.session_state.chat_history = []
 
@@ -134,20 +135,20 @@ html_code = f"""
     <script>
         const chatData = {chat_data_json};
         const container = document.getElementById('chat-content');
-        
+
         function createChatBubbles() {{
             chatData.speeches.forEach(message => {{
                 const bubble = document.createElement('div');
                 bubble.className = 'chat-bubble';
-                
+
                 const header = document.createElement('div');
                 header.className = 'chat-header';
                 header.textContent = `${{message.name}} (${{message.language}})`;
-                
+
                 const text = document.createElement('div');
                 text.className = 'chat-text';
                 text.textContent = message.speech;
-                
+
                 bubble.appendChild(header);
                 bubble.appendChild(text);
                 container.appendChild(bubble);
