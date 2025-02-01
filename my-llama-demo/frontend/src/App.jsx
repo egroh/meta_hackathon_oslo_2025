@@ -1,30 +1,92 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import * as d3 from "d3";
+
+function RadarChart({ data }) {
+  const svgRef = useRef(null);
+
+  useEffect(() => {
+    if (!data || data.length === 0) return;
+
+    const width = 300;
+    const height = 300;
+    const margin = 20;
+    const radius = Math.min(width, height) / 2 - margin;
+
+    const totalAxes = data[0].axes.length;
+    const angleSlice = (2 * Math.PI) / totalAxes;
+
+    const radarLine = d3
+      .lineRadial()
+      .radius((d) => d.value * radius)
+      .angle((d, i) => i * angleSlice)
+      .curve(d3.curveLinearClosed);
+
+    const svg = d3
+      .select(svgRef.current)
+      .attr("width", width)
+      .attr("height", height)
+      .append("g")
+      .attr("transform", `translate(${width / 2}, ${height / 2})`);
+
+    const blobWrapper = svg
+      .selectAll(".radarWrapper")
+      .data(data)
+      .enter()
+      .append("g")
+      .attr("class", "radarWrapper");
+
+    blobWrapper
+      .append("path")
+      .attr("class", "radarArea")
+      .attr("d", (d) => radarLine(d.axes))
+      .attr("player-id", (d) => d.player_id)
+      .style("fill", (d) => d.color)
+      .style("fill-opacity", 0.2)
+      .style("stroke", (d) => d.color)
+      .style("stroke-width", "2px")
+      .on("mouseover", function (event, d) {
+        const area = d3.select(this);
+        area.style("fill-opacity", 0.8);
+        area.style("stroke", d3.rgb(d.color).darker());
+        area.style("stroke-width", "2px");
+
+        const parent = d3.select(this.parentNode);
+        parent.raise();
+      })
+      .on("mouseout", function () {
+        d3.select(this).style("fill-opacity", 0.2);
+      })
+      .append("title")
+      .text((d) => d.name);
+  }, [data]);
+
+  return <svg ref={svgRef}></svg>;
+}
 
 function App() {
-  const [messages, setMessages] = useState([]);
-  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [speeches, setSpeeches] = useState([]);
+  const [selectedSpeech, setSelectedSpeech] = useState(null);
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState("");
 
-  // 1) Fetch the messages from the backend on mount
   useEffect(() => {
     fetch("http://89.169.96.185:8000/messages")
       .then((res) => res.json())
       .then((data) => {
-        setMessages(data.messages || []);
+        if (data.speeches) {
+          setSpeeches(data.speeches);
+        }
       })
-      .catch((err) => console.error("Error fetching messages:", err));
+      .catch((err) => console.error("Error fetching speeches:", err));
   }, []);
 
-  // 2) When user clicks on a message, store it as selected
-  const handleSelectMessage = (msg) => {
-    setSelectedMessage(msg);
-    setResponse(""); // Clear previous response
+  const handleSelectSpeech = (speechObj) => {
+    setSelectedSpeech(speechObj);
+    setResponse("");
   };
 
-  // 3) When user clicks the "Ask" button, POST {message, question} to the backend
   const handleAsk = async () => {
-    if (!selectedMessage) return;
+    if (!selectedSpeech) return;
     setResponse("Loading...");
 
     try {
@@ -32,7 +94,7 @@ function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: selectedMessage,
+          speech: selectedSpeech,
           question: question,
         }),
       });
@@ -46,33 +108,34 @@ function App() {
 
   return (
     <div style={styles.container}>
-      {/* Left column: list of messages */}
       <div style={styles.leftColumn}>
-        <h2>Messages</h2>
-        {messages.map((msg, idx) => (
+        <h2>Speeches</h2>
+        {speeches.map((sp, idx) => (
           <div
             key={idx}
-            style={styles.messageItem}
-            onClick={() => handleSelectMessage(msg)}
+            style={styles.speechItem}
+            onClick={() => handleSelectSpeech(sp)}
           >
-            {msg.slice(0, 60)}...
+            <strong>{sp.name} ({sp.language})</strong> - {sp.role}
+            <br />
+            <em>{sp.speech.slice(0, 60)}...</em>
           </div>
         ))}
       </div>
 
-      {/* Right column: show selected message, question input, and response */}
       <div style={styles.rightColumn}>
-        <h2>Details / Analysis</h2>
-        {selectedMessage ? (
+        <h2>Speech Details / Analysis</h2>
+        {selectedSpeech ? (
           <>
-            <div style={styles.selectedMessageBox}>
-              <strong>Selected Message:</strong>
-              <p>{selectedMessage}</p>
+            <div style={styles.selectedSpeechBox}>
+              <strong>{selectedSpeech.name} ({selectedSpeech.language}) - {selectedSpeech.role}</strong>
+              <p>{selectedSpeech.speech}</p>
             </div>
+            <RadarChart data={selectedSpeech.radarData} />
             <div style={styles.questionArea}>
               <input
                 style={styles.input}
-                placeholder="Ask something about this message..."
+                placeholder="Ask something about this speech..."
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
               />
@@ -86,7 +149,7 @@ function App() {
             </div>
           </>
         ) : (
-          <p>Select a message from the left to ask a question.</p>
+          <p>Select a speech on the left to see details and ask a question.</p>
         )}
       </div>
     </div>
@@ -105,7 +168,7 @@ const styles = {
     padding: "10px",
     overflowY: "auto",
   },
-  messageItem: {
+  speechItem: {
     padding: "8px",
     margin: "8px 0",
     backgroundColor: "#f0f0f0",
@@ -117,7 +180,7 @@ const styles = {
     padding: "10px",
     overflowY: "auto",
   },
-  selectedMessageBox: {
+  selectedSpeechBox: {
     backgroundColor: "#f9f9f9",
     border: "1px solid #ccc",
     padding: "10px",
