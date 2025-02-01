@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import useSpeeches from "./hooks/useSpeeches";
-import RadarChart from "./components/RadarChart";
+import useSpeeches from "./hooks/useSpeeches.jsx";
+import RadarChart from "./components/RadarChart.jsx";
 import { server_url } from "./config";
 
 const App = () => {
@@ -82,5 +82,18 @@ const App = () => {
     </div>
   );
 };
+
+const styles = {
+  container: { display: "flex", height: "100vh", fontFamily: "sans-serif" },
+  leftColumn: { width: "300px", borderRight: "1px solid #ccc", padding: "10px", overflowY: "auto" },
+  speechItem: { padding: "8px", margin: "8px 0", backgroundColor: "#f0f0f0", borderRadius: "4px", cursor: "pointer" },
+  rightColumn: { flex: 1, padding: "10px", overflowY: "auto" },
+  selectedSpeechBox: { backgroundColor: "#f9f9f9", border: "1px solid #ccc", padding: "10px", borderRadius: "4px", marginBottom: "10px" },
+  questionArea: { display: "flex", gap: "10px", marginBottom: "10px" },
+  input: { flex: 1, padding: "8px" },
+  button: { padding: "8px 16px", cursor: "pointer", backgroundColor: "#007bff", color: "white", border: "none", borderRadius: "4px", margin: "10px 0" },
+  responseBox: { backgroundColor: "#eef", padding: "10px", borderRadius: "4px" },
+};
+
 
 export default App;
