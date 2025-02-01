@@ -1,15 +1,108 @@
 import React, { useEffect, useState, useRef } from "react";
 import * as d3 from "d3";
+let server_url = "http://89.169.96.185:8000"
+
+// Chart functions
+function create_radar(svg_id, categories, data) {
+  const width = 350;
+  const height = 350;
+
+  // Configuration du radar chart
+  const config = {
+    w: width,
+    h: height,
+    levels: 5,
+    maxValue: 1,
+    color: d3.scaleOrdinal(d3.schemeCategory10),
+  };
+
+  // Sélection du conteneur SVG
+  const svg = d3
+    .select(svg_id)
+    .attr("width", config.w + 150)
+    .attr("height", config.h + 150)
+    .append("g")
+    .attr("transform", `translate(${config.w / 2 + 75}, ${config.h / 2 + 75})`);
+
+  const totalAxes = categories.length;
+  const radius = Math.min(config.w / 2, config.h / 2);
+  const angleSlice = (2 * Math.PI) / totalAxes;
+
+  // Échelle radiale
+  const radius_scale = d3.scaleLinear().range([0, radius]).domain([0, config.maxValue]);
+
+  // Grille circulaire avec animation
+  svg
+    .selectAll(".levels")
+    .data(d3.range(1, config.levels + 1).reverse())
+    .enter()
+    .append("circle")
+    .attr("class", "gridCircle")
+    .attr("r", (d) => (radius / config.levels) * d)
+    .style("fill", "#999")
+    .style("stroke", "#999")
+    .style("fill-opacity", 0.03)
+    .style("transform", "scale(0)")
+    // .transition()
+    // .duration(500)
+    // .delay((d, i) => i * 100)
+    .style("transform", "scale(1.1)")
+    // .transition()
+    // .duration(200)
+    .style("transform", "");
+
+  // Axes avec animation
+  const axis = svg
+    .selectAll(".axis")
+    .data(categories)
+    .enter()
+    .append("g")
+    .attr("class", "axis");
+
+  axis
+    .append("line")
+    .attr("x1", 0)
+    .attr("y1", 0)
+    .attr("x2", (d, i) => radius_scale(config.maxValue * 1.1) * Math.cos(angleSlice * i - Math.PI / 2))
+    .attr("y2", (d, i) => radius_scale(config.maxValue * 1.1) * Math.sin(angleSlice * i - Math.PI / 2))
+    .style("stroke", "#555")
+    .style("stroke-width", "1.5px")
+    .style("transform", (d, i) => `rotate(${(i * 180) / totalAxes}deg)`)
+    .style("transform-origin", "0 0")
+    .style("opacity", "0")
+    // .transition()
+    // .duration(500)
+    // .delay((d, i) => i * 15 + 700)
+    .style("opacity", "1")
+    .style("transform", "rotate(0deg)");
+
+  axis
+    .append("text")
+    .attr("class", "legend")
+    .attr("x", (d, i) => radius_scale(config.maxValue * 1.25) * Math.cos(angleSlice * i - Math.PI / 2))
+    .attr("y", (d, i) => radius_scale(config.maxValue * 1.25) * Math.sin(angleSlice * i - Math.PI / 2))
+    .attr("text-anchor", "middle")
+    .text((d) => d.replaceAll("_", " "))
+    .style("font-size", "11px")
+    .style("opacity", "0")
+    // .transition()
+    // .delay((d, i) => i * 60 + 500)
+    .style("opacity", "1");
+}
 
 function RadarChart({ data }) {
   const svgRef = useRef(null);
 
   useEffect(() => {
     if (!data || data.length === 0) return;
+    // Clear the previous chart (if any)
+    d3.select(svgRef.current).selectAll("*").remove();
+    // Call the function to create the radar chart
+    create_radar(svgRef.current, data[0].axes.map(a => a.axis), data[0].axes); // Passing axes data for plotting
 
-    const width = 300;
-    const height = 300;
-    const margin = 20;
+    const width = 500;
+    const height = 500;
+    const margin = 50;
     const radius = Math.min(width, height) / 2 - margin;
 
     const totalAxes = data[0].axes.length;
@@ -28,12 +121,16 @@ function RadarChart({ data }) {
       .append("g")
       .attr("transform", `translate(${width / 2}, ${height / 2})`);
 
+    // Clear previous chart before drawing the new one
+    svg.selectAll("*").remove();
+
     const blobWrapper = svg
       .selectAll(".radarWrapper")
       .data(data)
       .enter()
       .append("g")
       .attr("class", "radarWrapper");
+    
 
     blobWrapper
       .append("path")
@@ -68,13 +165,19 @@ function App() {
   const [selectedSpeech, setSelectedSpeech] = useState(null);
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState("");
+  const [showChart, setShowChart] = useState(false);
 
   useEffect(() => {
-    fetch("http://89.169.96.185:8000/messages")
+    fetch(server_url + "/messages")
       .then((res) => res.json())
       .then((data) => {
         if (data.speeches) {
-          setSpeeches(data.speeches);
+          // Adding dummy radar data to each speech object
+          const updatedSpeeches = data.speeches.map((speech) => {
+            speech.radarData = generateRadarData(speech);
+            return speech;
+          });
+          setSpeeches(updatedSpeeches);
         }
       })
       .catch((err) => console.error("Error fetching speeches:", err));
@@ -90,7 +193,7 @@ function App() {
     setResponse("Loading...");
 
     try {
-      const res = await fetch("http://89.169.96.185:8000/ask", {
+      const res = await fetch(server_url+"/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -104,6 +207,59 @@ function App() {
       console.error(err);
       setResponse("Error: " + err.message);
     }
+  };
+
+  const translate = async () => {
+    if (!selectedSpeech) return;
+      setResponse("Loading...");
+    try {
+      const res = await fetch(server_url+"/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          speech: selectedSpeech,
+          question: "translate the speech to English while keeping the same tone",
+        }),
+      });
+      const data = await res.json();
+      setResponse(data.response);
+    } catch (err) {
+      console.error(err);
+      setResponse("Error: " + err.message);
+    }
+  };
+
+  const context = async () => {
+    if (!selectedSpeech) return;
+      setResponse("Loading...");
+    try {
+      const res = await fetch(server_url+"/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          speech: selectedSpeech,
+          question: "",
+        }),
+      });
+      const data = await res.json();
+      setResponse(data.response);
+    } catch (err) {
+      console.error(err);
+      setResponse("Error: " + err.message);
+    }
+  };
+
+  // Generate dummy radar data for each speech
+  const generateRadarData = (speech) => {
+    const axes = [
+      { axis: "Cooperation", value: 1  },
+      { axis: "Diplomacy", value: 0.5  },
+      { axis: "Persuasion", value: 0.25  },
+      { axis: "Urgency", value: 0.25  },
+      { axis: "Strategy", value: 0.25  },
+    ];
+
+    return { axes, color: "#FF5733", name: speech.name };
   };
 
   return (
@@ -131,7 +287,6 @@ function App() {
               <strong>{selectedSpeech.name} ({selectedSpeech.language}) - {selectedSpeech.role}</strong>
               <p>{selectedSpeech.speech}</p>
             </div>
-            <RadarChart data={selectedSpeech.radarData} />
             <div style={styles.questionArea}>
               <input
                 style={styles.input}
@@ -142,11 +297,26 @@ function App() {
               <button style={styles.button} onClick={handleAsk}>
                 Ask
               </button>
+              <button style={styles.button} onClick={translate}>
+                Translate
+              </button>
+              <button style={styles.button} onClick={context}>
+                Context
+              </button>
             </div>
             <div style={styles.responseBox}>
               <strong>Response:</strong>
               <p>{response}</p>
             </div>
+            <div> 
+            <button 
+              style={styles.button} 
+              onClick={() => setShowChart(!showChart)}
+            >
+              {showChart ? 'Hide Chart' : 'Show Chart'}
+            </button>
+            </div>
+            {showChart && <RadarChart key={selectedSpeech.name} data={[selectedSpeech.radarData]} />}
           </>
         ) : (
           <p>Select a speech on the left to see details and ask a question.</p>
@@ -199,6 +369,11 @@ const styles = {
   button: {
     padding: "8px 16px",
     cursor: "pointer",
+    backgroundColor: "#007bff",
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
+    margin: "10px 0",
   },
   responseBox: {
     backgroundColor: "#eef",
