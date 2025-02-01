@@ -1,8 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import * as d3 from "d3";
 
-let server_url = "http://89.169.96.185:8001"
-
 function RadarChart({ data }) {
   const svgRef = useRef(null);
 
@@ -72,7 +70,7 @@ function App() {
   const [response, setResponse] = useState("");
 
   useEffect(() => {
-    fetch(server_url + "/messages")
+    fetch("http://89.169.96.185:8000/messages")
       .then((res) => res.json())
       .then((data) => {
         if (data.speeches) {
@@ -92,7 +90,7 @@ function App() {
     setResponse("Loading...");
 
     try {
-      const res = await fetch(server_url+"/ask", {
+      const res = await fetch("http://89.169.96.185:8000/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
