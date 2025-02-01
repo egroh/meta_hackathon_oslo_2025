@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import useSpeeches from "./hooks/useSpeeches.jsx";
 import RadarChart from "./components/RadarChart.jsx";
 import { server_url } from "./config";
@@ -9,10 +9,12 @@ const App = () => {
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState("");
   const [showChart, setShowChart] = useState(false);
+  const [radarData, setRadarData] = useState(null);
 
   const handleSelectSpeech = (speechObj) => {
     setSelectedSpeech(speechObj);
     setResponse("");
+    fetchRadarData(speechObj);
   };
 
   const fetchResponse = async (questionText) => {
@@ -29,6 +31,30 @@ const App = () => {
     } catch (err) {
       console.error(err);
       setResponse("Error: " + err.message);
+    }
+  };
+
+  const fetchRadarData = async (speech) => {
+    try {
+      const res = await fetch(`${server_url}/radar_chart`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ speech: speech, question: "" }),
+      });
+      const data = await res.json();
+      setRadarData({
+        axes: Object.entries(data).map(([key, value]) => ({ axis: key, value: value / 100 })),
+        color: "#FF5733",
+        name: speech.name,
+      });
+    } catch (err) {
+      console.error("Error fetching radar data:", err);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      fetchResponse(question);
     }
   };
 
@@ -59,6 +85,7 @@ const App = () => {
                 placeholder="Ask something about this speech..."
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
+                onKeyDown={handleKeyPress}
               />
               <button style={styles.button} onClick={() => fetchResponse(question)}>Ask</button>
               <button style={styles.button} onClick={() => fetchResponse("Translate the speech to English")}>Translate</button>
@@ -72,7 +99,7 @@ const App = () => {
                 {showChart ? "Hide Chart" : "Show Chart"}
               </button>
             </div>
-            {showChart && <RadarChart  key={selectedSpeech.name} data={[selectedSpeech.radarData]} />}
+            {showChart && radarData && <RadarChart  key={selectedSpeech.name} data={[radarData]} />}
           </>
         ) : (
           <p>Select a speech on the left to see details and ask a question.</p>

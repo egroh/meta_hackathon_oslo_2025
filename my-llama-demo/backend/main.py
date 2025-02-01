@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 import asyncio
 import json
-from typing import Optional
-
+from typing import Optional, Any, Coroutine
+from promts import speech_prompt
+from promts import AskRequest
 from model_worker import start_model_worker
+
 
 app = FastAPI()
 
@@ -27,10 +28,6 @@ with open("Northen_Ireland_chat.json", "r", encoding="utf-8") as f:
 request_queue = None
 response_queue = None
 worker = None
-
-class AskRequest(BaseModel):
-    speech: dict  # the entire speech object from the frontend
-    question: str
 
 @app.on_event("startup")
 async def on_startup() -> None:
@@ -61,29 +58,13 @@ async def ask_model(req: AskRequest) -> dict[str, str]:
     Combine the speech and user's question into a single prompt for the LlamaIndex worker.
     Return the model's response.
     """
-    if not req.speech or not req.question:
-        return {"response": "Missing speech or question."}
+    return await speech_prompt(req, request_queue, response_queue, "assistant")
 
-    # Extract fields
-    name = req.speech.get("name", "Unknown")
-    role = req.speech.get("role", "Unknown")
-    text = req.speech.get("speech", "")
-    lang = req.speech.get("language", "Unknown")
-
-    # Build a combined prompt
-    prompt_text = (
-        f"This is a {lang} speech by {name} ({role}).\n\n"
-        f"Speech text:\n{text}\n\n"
-        f"User question: {req.question}\n\n"
-        f"Answer in English, referencing the speech context if needed."
-    )
-
-    # Forward to worker
-    request_queue.put(prompt_text)
-
-    # Wait for response
-    while response_queue.empty():
-        await asyncio.sleep(0.1)
-
-    response = response_queue.get()
-    return {"response": response}
+@app.post("/radar_chart")
+async def ask_model_radar(req: AskRequest) -> dict[str, str]:
+    """
+    Combine the speech and user's question into a single prompt for the LlamaIndex worker.
+    Return the model's response.
+    """
+    print("Radar Chart")
+    return await speech_prompt(req, request_queue, response_queue, "radar")
