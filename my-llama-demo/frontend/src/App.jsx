@@ -62,7 +62,6 @@ const App = () => {
               />
               <button style={styles.button} onClick={() => fetchResponse(question)}>Ask</button>
               <button style={styles.button} onClick={() => fetchResponse("Translate the speech to English")}>Translate</button>
-              <button style={styles.button} onClick={() => fetchResponse("Provide context for this speech")}>Context</button>
             </div>
             <div style={styles.responseBox}>
               <strong>Response:</strong>
@@ -73,7 +72,7 @@ const App = () => {
                 {showChart ? "Hide Chart" : "Show Chart"}
               </button>
             </div>
-            {showChart && <RadarChart key={selectedSpeech.name} data={[selectedSpeech.radarData]} />}
+            {showChart && <RadarChart  key={selectedSpeech.name} data={[selectedSpeech.radarData]} />}
           </>
         ) : (
           <p>Select a speech on the left to see details and ask a question.</p>
@@ -94,6 +93,5 @@ const styles = {
   button: { padding: "8px 16px", cursor: "pointer", backgroundColor: "#007bff", color: "white", border: "none", borderRadius: "4px", margin: "10px 0" },
   responseBox: { backgroundColor: "#eef", padding: "10px", borderRadius: "4px" },
 };
-
 
 export default App;
