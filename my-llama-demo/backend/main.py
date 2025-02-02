@@ -66,5 +66,12 @@ async def ask_model_radar(req: AskRequest) -> dict[str, str]:
     Combine the speech and user's question into a single prompt for the LlamaIndex worker.
     Return the model's response.
     """
-    print("Radar Chart")
     return await speech_prompt(req, request_queue, response_queue, "radar")
+
+# @app.post("/bias_chart")
+# async def ask_model_radar(req: AskRequest) -> dict[str, str]:
+#     """
+#     Combine the speech and user's question into a single prompt for the LlamaIndex worker.
+#     Return the model's response.
+#     """
+#     return await speech_prompt(req, request_queue, response_queue, "bias")

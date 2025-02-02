@@ -11,30 +11,33 @@ class AskRequest(BaseModel):
     speech: dict  # the entire speech object from the frontend
     question: str
 
-def radar_chart_prompt(name: str, role: str, text: str, lang: str, speech: str, user_question: str) -> str:
+def radar_chart_prompt(name: str, role: str, text: str, lang: str, user_question: str) -> str:
     return f"""
     This is a speech given by {name}, whose role is {role}:
 
-    {speech}
-
-    Given the following speech, classify its negotiation strategy based on:
+    {text}
+    
+    You will act like a negotiation expert.
+    Given the above speech, classify its negotiation strategy based on:
     - Cooperation & Relationship-Building (0-100)
-    - Respectfulness & Diplomacy (0-100)
-    - Satisfaction with the solution (0-100)
-    - Use of evidence (0-100)
-    - Urgency & Time Pressure Detection (0-100)
-    - How much of the speaker's interest is portrayed (0-100)
+    - diplomacy (0-100) 
+    - persuasion (0-100)
+    - urgency (0-100)
+    - strategy (0-100)
 
     Provide a JSON output like:
-    {
-    "Cooperation & Relationship-Building": 85,
-      "Respectfulness & Diplomacy": 75,
-      "Satisfaction with the solution": 50,
-      "Use of evidence": 60,
-      "Urgency & Time Pressure Detection": 40,
-      "How much of the speaker's interest is portrayed": 10
-    }
+    {{
+    "Cooperation": XX,
+    "Diplomacy": XX,
+    "Persuasion": XX,
+    "Urgency": XX,
+    "Strategy": XX,
+    }}
+    Just give this output, do not put extra newline characters in it.
     """
+
+
+
 
 
 def assistant_prompt(name: str, role: str, text: str, lang: str, user_question: str) -> str:
@@ -44,6 +47,18 @@ def assistant_prompt(name: str, role: str, text: str, lang: str, user_question: 
         f"User question: {user_question}\n\n"
         f"Answer in English, referencing the speech context if needed."
     )
+
+# def bias_prompt(name: str, role: str, text: str, lang: str, user_question: str) -> str:
+#     return f"""
+#     This is a speech given by {name}, whose role is {role}:
+
+#     {text}
+    
+#     You will act like a geopolitical analyst expert.
+#     Given the above speech, identify the potential two opposite sides and evaluate the degree of bias in the speech.
+#     You answer using an integer from -100 to 100, where -100 is extremely biased against the first side, 0 is neutral, and 100 is extremely biased against the second side.
+#     Only provide a list containing the two sides (first and second) as well as the bias integer, do not provide anything else.
+#     """
 
 
 CACHE_FILE = "radar_graph_cache.json"
@@ -67,8 +82,6 @@ async def speech_prompt(
         response_queue: Queue,
         mode: Literal["assistant", "radar"]
 ) -> Dict[str, str]:
-    if not req.speech or not req.question:
-        return {"response": "Missing speech or question."}
 
     # Extract fields
     name: str = req.speech.get("name", "Unknown")
@@ -85,7 +98,12 @@ async def speech_prompt(
         if speech_key in cache:
             return {"response": cache[speech_key]}  # Return cached response if available
 
-        prompt_text: str = radar_chart_prompt(name, role, text, lang, text, user_question)
+        prompt_text: str = radar_chart_prompt(name, role, text, lang, user_question)
+    # elif mode == "bias":
+    #     if speech_key in cache:
+    #         return {"response": cache[speech_key]}  # Return cached response if available
+
+    #     prompt_text: str = bias_prompt(name, role, text, lang, user_question)
     else:
         prompt_text: str = assistant_prompt(name, role, text, lang, user_question)
 

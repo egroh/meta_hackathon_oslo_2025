@@ -130,8 +130,8 @@ function RadarChart({ data }) {
       .enter()
       .append("g")
       .attr("class", "radarWrapper");
-    
 
+ 
     blobWrapper
       .append("path")
       .attr("class", "radarArea")

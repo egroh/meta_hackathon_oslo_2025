@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import useSpeeches from "./hooks/useSpeeches.jsx";
 import RadarChart from "./components/RadarChart.jsx";
 import { server_url } from "./config";
+import BiasDonutChart from './components/BiasDonutChart.jsx';
+
 
 const App = () => {
   const speeches = useSpeeches();
@@ -10,11 +12,13 @@ const App = () => {
   const [response, setResponse] = useState("");
   const [showChart, setShowChart] = useState(false);
   const [radarData, setRadarData] = useState(null);
+  const [biasChart, set_biasChart] = useState(null);
 
   const handleSelectSpeech = (speechObj) => {
     setSelectedSpeech(speechObj);
     setResponse("");
-    fetchRadarData(speechObj);
+    // fetchRadarData(speechObj);
+    fetchBiasData(speechObj);
   };
 
   const fetchResponse = async (questionText) => {
@@ -41,17 +45,91 @@ const App = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ speech: speech, question: "" }),
       });
-      const data = await res.json();
-      setRadarData({
-        axes: Object.entries(data).map(([key, value]) => ({ axis: key, value: value / 100 })),
+      let data = await res.text();
+    
+      console.log("Raw data type:", typeof data);
+      console.log("Raw data:", data);
+
+      // Convert to string if not already
+      data = data.toString();
+      
+      // Clean the string in one go
+      data = data.replace("[", '');
+      data = data.replace("]", '');
+      data = data.replace("\n", '');
+      const cleanString = data.replace(" ", '');
+      
+      console.log("Cleaned string:", cleanString);
+      
+      // Split and convert to number
+      const datalist = cleanString.split(',').map(num => parseFloat(num) || 0);
+      console.log("Parsed numbers:", datalist);
+      const formattedData = {
+        axes: [
+          { axis: "Cooperation", value: datalist[0] / 100 },
+          { axis: "Diplomacy", value: datalist[1] / 100 },
+          { axis: "Persuasion", value: datalist[2] / 100 },
+          { axis: "Urgency", value: datalist[3] / 100 },
+          { axis: "Strategy", value: datalist[4] / 100 },
+        ],
         color: "#FF5733",
-        name: speech.name,
-      });
+        name: speech.name
+      };
+      
+      setRadarData(formattedData);
     } catch (err) {
       console.error("Error fetching radar data:", err);
     }
   };
 
+  const fetchBiasData = async (speech) => {
+    try {
+      const res = await fetch(`${server_url}/bias_chart`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ speech: speech, question: "" }),
+      });
+      let data = await res.text();
+    
+      console.log("Raw data type:", typeof data);
+      console.log("Raw data:", data);
+
+      // Convert to string if not already
+      data = data.toString();
+      
+      // Clean the string in one go
+      data = data.replace("[", '');
+      data = data.replace("]", '');
+      data = data.replace("\n", '');
+      const cleanString = data.replace(" ", '');
+      
+      console.log("Cleaned string:", cleanString);
+      
+      // Split and convert to number
+      const datalist = cleanString.split(',');
+      number = datalist[2].map(num => parseFloat(num) || 0)
+      firstSide = datalist[0].toString()
+      secondSide = datalist[1].toString()
+
+      console.log("Side 1:", firstSide);
+      console.log("Side 2:", secondSide);
+      console.log("Parsed numbers:", number);
+
+      const formattedData = {
+        axes: [
+          { axis: firstSide, value: number[0] / 100 },
+          { axis: secondSide, value: number[1] / 100 },
+        ],
+        color: "#FF5733",
+        name: speech.name
+      };
+      
+      set_biasChart(formattedData);
+    } catch (err) {
+      console.error("Error fetching radar data:", err);
+    }
+  };
+  
   const handleKeyPress = (e) => {
     if (e.key === "Enter") {
       fetchResponse(question);
@@ -89,6 +167,7 @@ const App = () => {
               />
               <button style={styles.button} onClick={() => fetchResponse(question)}>Ask</button>
               <button style={styles.button} onClick={() => fetchResponse("Translate the speech to English")}>Translate</button>
+              <button style={styles.button} onClick={() => fetchResponse("List the key points in the text and present the main ides using bullet points. skip  lines between facts")}>Key points</button>
             </div>
             <div style={styles.responseBox}>
               <strong>Response:</strong>
@@ -100,6 +179,7 @@ const App = () => {
               </button>
             </div>
             {showChart && radarData && <RadarChart  key={selectedSpeech.name} data={[radarData]} />}
+            {showChart && biasChart && <BiasDonutChart key={selectedSpeech.name} data={biasChart} />}
           </>
         ) : (
           <p>Select a speech on the left to see details and ask a question.</p>
