@@ -2,11 +2,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import json
-from typing import Optional, Any, Coroutine
+from typing import Optional, Any, Coroutine, Dict, Union
 from promts import speech_prompt
-from promts import AskRequest
+from promts import LlamaRequest
 from model_worker import start_model_worker
-
 
 app = FastAPI()
 
@@ -52,21 +51,14 @@ def get_messages() -> dict:
     """
     return speeches_data
 
-@app.post("/ask")
-async def ask_model(req: AskRequest) -> dict[str, str]:
+@app.post("/llama_request")
+async def ask_model(req: LlamaRequest) -> dict[str, Union[str, int]]:
     """
     Combine the speech and user's question into a single prompt for the LlamaIndex worker.
     Return the model's response.
     """
-    return await speech_prompt(req, request_queue, response_queue, "assistant")
+    return await speech_prompt(req, request_queue, response_queue)
 
-@app.post("/radar_chart")
-async def ask_model_radar(req: AskRequest) -> dict[str, str]:
-    """
-    Combine the speech and user's question into a single prompt for the LlamaIndex worker.
-    Return the model's response.
-    """
-    return await speech_prompt(req, request_queue, response_queue, "radar")
 
 # @app.post("/bias_chart")
 # async def ask_model_radar(req: AskRequest) -> dict[str, str]:

@@ -1,10 +1,14 @@
+import json
 import multiprocessing
-from typing import Tuple
+import os
+from typing import Tuple, Dict
 
 # LlamaIndex imports for 0.12.x
 from llama_index.core import Settings, SimpleDirectoryReader, VectorStoreIndex
 from llama_index.llms.huggingface import HuggingFaceLLM
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+
+TESTING = False
 
 # Transformers/HF imports
 from transformers import (
@@ -38,47 +42,48 @@ def model_worker_main(
         bnb_4bit_compute_dtype="bfloat16",
         bnb_4bit_use_double_quant=True
     )
+    if not TESTING:
+        tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            quantization_config=bnb_config,
+            device_map="auto",
+            low_cpu_mem_usage=True,
+            token=hf_token
+        )
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
-    model = AutoModelForCausalLM.from_pretrained(
-        model_name,
-        quantization_config=bnb_config,
-        device_map="auto",
-        low_cpu_mem_usage=True,
-        token=hf_token
-    )
+        # --------------------------------------------------
+        # 2) Set the Global `Settings` for LlamaIndex
+        # --------------------------------------------------
+        # This ensures LlamaIndex uses *only* HuggingFace objects, not OpenAI.
+        Settings.llm = HuggingFaceLLM(
+            model_name=model_name,
+            model=model,
+            tokenizer=tokenizer,
+            device_map="auto",
+            model_kwargs={"torch_dtype": "bfloat16"}  # or "float16"
+        )
 
-    # --------------------------------------------------
-    # 2) Set the Global `Settings` for LlamaIndex
-    # --------------------------------------------------
-    # This ensures LlamaIndex uses *only* HuggingFace objects, not OpenAI.
-    Settings.llm = HuggingFaceLLM(
-        model_name=model_name,
-        model=model,
-        tokenizer=tokenizer,
-        device_map="auto",
-        model_kwargs={"torch_dtype": "bfloat16"}  # or "float16"
-    )
+        Settings.embed_model = HuggingFaceEmbedding(
+            model_name="BAAI/bge-base-en-v1.5"
+        )
 
-    Settings.embed_model = HuggingFaceEmbedding(
-        model_name="BAAI/bge-base-en-v1.5"
-    )
+        # You can set other global settings if needed:
+        # Settings.node_parser = ...
+        # Settings.num_output = 512
+        # Settings.context_window = 3900
+        # etc.
 
-    # You can set other global settings if needed:
-    # Settings.node_parser = ...
-    # Settings.num_output = 512
-    # Settings.context_window = 3900
-    # etc.
+        # --------------------------------------------------
+        # 3) Build the Index
+        # --------------------------------------------------
+        # Because we've set `Settings.llm` and `Settings.embed_model` globally,
+        # we can call `VectorStoreIndex.from_documents()` directly, and it will
+        # use the HuggingFace LLM + embedding under the hood
 
-    # --------------------------------------------------
-    # 3) Build the Index
-    # --------------------------------------------------
-    # Because we've set `Settings.llm` and `Settings.embed_model` globally,
-    # we can call `VectorStoreIndex.from_documents()` directly, and it will
-    # use the HuggingFace LLM + embedding under the hood.
-    documents = SimpleDirectoryReader("data").load_data()
-    index = VectorStoreIndex.from_documents(documents)
-    query_engine = index.as_query_engine()
+        documents = SimpleDirectoryReader("data").load_data()
+        index = VectorStoreIndex.from_documents(documents)
+        query_engine = index.as_query_engine()
 
     print("[Worker] Model & index ready. Waiting for prompts...")
 
@@ -91,7 +96,11 @@ def model_worker_main(
             print("[Worker] Shutting down.")
             break
 
-        response = query_engine.query(prompt)
+        if TESTING:
+            response = "This is a test llama response, have fun or disable TESTING mode"
+        else:
+            response = query_engine.query(prompt)
+
         response_text = str(response)  # convert to plain string
         response_queue.put(response_text)
 

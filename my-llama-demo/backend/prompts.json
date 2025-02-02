@@ -1,0 +1,4 @@
+{
+    "radar_chart": "This is a speech given by {name}, whose role is {role}:\n\n{text}\n\nYou will act like a negotiation expert.\nGiven the above speech, classify its negotiation strategy based on:\n- Cooperation & Relationship-Building (0-100)\n- Diplomacy (0-100)\n- Persuasion (0-100)\n- Urgency (0-100)\n- Strategy (0-100)\n\nProvide a JSON output like:{{\"Cooperation\": XX,\"Diplomacy\": XX,\"Persuasion\": XX,\"Urgency\": XX,\"Strategy\": XX}}\nJust give the JSON output, do not put extra newline characters in it.",
+    "assistant_question": "This is a {lang} speech by {name} ({role}).\n\nSpeech text:\n{text}\n\nUser question: {user_question}\n\nAnswer in English, referencing the speech context if needed."
+}

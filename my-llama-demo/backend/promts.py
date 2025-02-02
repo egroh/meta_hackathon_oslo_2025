@@ -3,50 +3,17 @@ import json
 import os
 from typing import Dict, Literal
 from queue import Queue
+import json
+import re
+
 
 from pydantic import BaseModel
 
 
-class AskRequest(BaseModel):
+class LlamaRequest(BaseModel):
     speech: dict  # the entire speech object from the frontend
-    question: str
-
-def radar_chart_prompt(name: str, role: str, text: str, lang: str, user_question: str) -> str:
-    return f"""
-    This is a speech given by {name}, whose role is {role}:
-
-    {text}
-    
-    You will act like a negotiation expert.
-    Given the above speech, classify its negotiation strategy based on:
-    - Cooperation & Relationship-Building (0-100)
-    - diplomacy (0-100) 
-    - persuasion (0-100)
-    - urgency (0-100)
-    - strategy (0-100)
-
-    Provide a JSON output like:
-    {{
-    "Cooperation": XX,
-    "Diplomacy": XX,
-    "Persuasion": XX,
-    "Urgency": XX,
-    "Strategy": XX,
-    }}
-    Just give this output, do not put extra newline characters in it.
-    """
-
-
-
-
-
-def assistant_prompt(name: str, role: str, text: str, lang: str, user_question: str) -> str:
-    return (
-        f"This is a {lang} speech by {name} ({role}).\n\n"
-        f"Speech text:\n{text}\n\n"
-        f"User question: {user_question}\n\n"
-        f"Answer in English, referencing the speech context if needed."
-    )
+    instructions: dict
+    prompt_data: dict
 
 # def bias_prompt(name: str, role: str, text: str, lang: str, user_question: str) -> str:
 #     return f"""
@@ -61,8 +28,8 @@ def assistant_prompt(name: str, role: str, text: str, lang: str, user_question: 
 #     """
 
 
-CACHE_FILE = "radar_graph_cache.json"
-
+CACHE_FILE = "cache.json"
+PROMPTS_FILE = "prompts.json"
 
 def load_cache() -> Dict[str, str]:
     if os.path.exists(CACHE_FILE):
@@ -70,17 +37,21 @@ def load_cache() -> Dict[str, str]:
             return json.load(f)
     return {}
 
-
 def save_cache(cache: Dict[str, str]):
     with open(CACHE_FILE, "w") as f:
         json.dump(cache, f)
 
+def load_prompts() -> Dict[str, str]:
+    if os.path.exists(PROMPTS_FILE):
+        with open(PROMPTS_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
 
 async def speech_prompt(
-        req: AskRequest,
+        req: LlamaRequest,
         request_queue: Queue,
         response_queue: Queue,
-        mode: Literal["assistant", "radar"]
 ) -> Dict[str, str]:
 
     # Extract fields
@@ -88,24 +59,36 @@ async def speech_prompt(
     role: str = req.speech.get("role", "Unknown")
     text: str = req.speech.get("speech", "")
     lang: str = req.speech.get("language", "Unknown")
-    user_question: str = req.question
+
+    prompt_key = req.instructions.get("prompt_id", req.instructions.get("prompt", "default"))
+    speech_key = f"{name}_{role}_{text[:50]}_{prompt_key}"
 
     # Load cache
-    cache = load_cache()
-    speech_key = f"{name}_{role}_{text[:50]}"  # Unique identifier based on speech content
-
-    if mode == "radar":
+    if "no_cache" not in req.instructions:
+        cache = load_cache()
         if speech_key in cache:
-            return {"response": cache[speech_key]}  # Return cached response if available
+            response = cache[speech_key]
+            if "json_keys" in req.instructions:
+                return sanitize_json_output(response, req.instructions["json_keys"])
+            else:
+                return {"response": response}
 
-        prompt_text: str = radar_chart_prompt(name, role, text, lang, user_question)
-    # elif mode == "bias":
-    #     if speech_key in cache:
-    #         return {"response": cache[speech_key]}  # Return cached response if available
+    if "prompt" in req.instructions:
+        prompt = req.instructions["prompt"]
+    elif "prompt_id" in req.instructions:
+        prompts = load_prompts()
+        prompt_id = req.instructions["prompt_id"]
 
-    #     prompt_text: str = bias_prompt(name, role, text, lang, user_question)
+        if prompt_id not in prompts:
+            return {"error": f"Prompt not found for {prompt_id}"}
+        prompt = prompts[prompt_id]
     else:
-        prompt_text: str = assistant_prompt(name, role, text, lang, user_question)
+        return {"error": "No prompt, or template specified"}
+
+    try:
+        prompt_text = prompt.format(name=name, role=role, text=text, lang=lang, **req.prompt_data)
+    except KeyError as e:
+        return {"error": f"Missing variable: {e}"}
 
     # Forward to worker
     request_queue.put(prompt_text)
@@ -117,8 +100,45 @@ async def speech_prompt(
     response: str = response_queue.get()
 
     # Cache radar responses
-    if mode == "radar":
+    if "no_cache" not in req.instructions:
         cache[speech_key] = response
         save_cache(cache)
 
+    if "json_keys" in req.instructions:
+        return sanitize_json_output(response, req.instructions["json_keys"])
+
     return {"response": response}
+
+def sanitize_json_output(model_output: str, required_keys: list) -> dict:
+    """
+    Detects and sanitizes JSON in a model's output.
+
+    - Removes extra text before/after JSON.
+    - Ensures required keys exist with empty values if missing.
+
+    :param model_output: The raw text output from the model.
+    :param required_keys: List of keys that must be in the final JSON.
+    :return: A sanitized JSON dictionary.
+    """
+
+    # Extract potential JSON using regex
+    json_pattern = re.search(r'\{.*\}', model_output, re.DOTALL)
+    if not json_pattern:
+        print(f"No JSON in model output, wanted {required_keys}: {model_output}")
+        parsed_json = {}
+    else:
+        json_text = json_pattern.group()
+
+        try:
+            # Parse JSON
+            parsed_json = json.loads(json_text)
+        except json.JSONDecodeError:
+            print(f"Invalid JSON in model output, wanted {required_keys}: {model_output}")
+            parsed_json = {}
+
+    # Ensure required keys exist
+    for key in required_keys:
+        if key not in parsed_json:
+            parsed_json[key] = ""
+
+    return parsed_json
