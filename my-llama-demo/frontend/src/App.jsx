@@ -21,7 +21,7 @@ const App = () => {
     setSelectedSpeech(speechObj);
     setResponse("");
     fetchRadarData(speechObj);
-    // fetchBiasData(speechObj);
+    fetchBiasData(speechObj);
   };
 
   const fetchResponse = async (questionText, instructions = {prompt_id: "assistant_question"}) => {
@@ -83,10 +83,16 @@ const App = () => {
 
   const fetchBiasData = async (speech) => {
     try {
-      const res = await fetch(`${server_url}/bias_chart`, {
+      const res = await fetch(`${server_url}/llama_request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ speech: speech, question: "" }),
+        body: JSON.stringify({
+          speech: speech,
+          instructions: {
+            prompt_id: "bias_chart",
+          },
+          prompt_data: {}
+        }),
       });
       let data = await res.text();
     
