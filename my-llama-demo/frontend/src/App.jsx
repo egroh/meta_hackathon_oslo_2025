@@ -11,27 +11,38 @@ const App = () => {
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState("");
   const [showChart, setShowChart] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [radarData, setRadarData] = useState(null);
   const [biasChart, set_biasChart] = useState(null);
+
+
 
   const handleSelectSpeech = (speechObj) => {
     setSelectedSpeech(speechObj);
     setResponse("");
-    // fetchRadarData(speechObj);
-    fetchBiasData(speechObj);
+    fetchRadarData(speechObj);
+    // fetchBiasData(speechObj);
   };
 
-  const fetchResponse = async (questionText) => {
+  const fetchResponse = async (questionText, instructions = {prompt_id: "assistant_question"}) => {
     if (!selectedSpeech) return;
-    setResponse("Loading...");
+    setLoading(true);
     try {
-      const res = await fetch(`${server_url}/ask`, {
+      const res = await fetch(`${server_url}/llama_request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ speech: selectedSpeech, question: questionText }),
+        body: JSON.stringify({
+          speech: selectedSpeech,
+          instructions: {
+            prompt: instructions.prompt || undefined,
+            prompt_id: instructions.prompt_id || undefined,
+            no_cache: true,
+          },
+          prompt_data: {user_question: questionText}
+        }),
       });
       const data = await res.json();
-      setResponse(data.response);
+      setResponse(data.response || data.error);
     } catch (err) {
       console.error(err);
       setResponse("Error: " + err.message);
@@ -40,42 +51,30 @@ const App = () => {
 
   const fetchRadarData = async (speech) => {
     try {
-      const res = await fetch(`${server_url}/radar_chart`, {
+      const res = await fetch(`${server_url}/llama_request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ speech: speech, question: "" }),
+        body: JSON.stringify({
+          speech: speech,
+          instructions: {
+            prompt_id: "radar_chart",
+            json_keys: ["Cooperation", "Diplomacy", "Persuasion", "Urgency", "Strategy"]
+          },
+          prompt_data: {}
+        }),
       });
-      let data = await res.text();
-    
-      console.log("Raw data type:", typeof data);
-      console.log("Raw data:", data);
-
-      // Convert to string if not already
-      data = data.toString();
-      
-      // Clean the string in one go
-      data = data.replace("[", '');
-      data = data.replace("]", '');
-      data = data.replace("\n", '');
-      const cleanString = data.replace(" ", '');
-      
-      console.log("Cleaned string:", cleanString);
-      
-      // Split and convert to number
-      const datalist = cleanString.split(',').map(num => parseFloat(num) || 0);
-      console.log("Parsed numbers:", datalist);
+      const data = await res.json();
       const formattedData = {
         axes: [
-          { axis: "Cooperation", value: datalist[0] / 100 },
-          { axis: "Diplomacy", value: datalist[1] / 100 },
-          { axis: "Persuasion", value: datalist[2] / 100 },
-          { axis: "Urgency", value: datalist[3] / 100 },
-          { axis: "Strategy", value: datalist[4] / 100 },
+          { axis: "Cooperation", value: data["Cooperation"] / 100 },
+          { axis: "Diplomacy", value: data["Diplomacy"] / 100 },
+          { axis: "Persuasion", value: data["Persuasion"] / 100 },
+          { axis: "Urgency", value: data["Urgency"] / 100 },
+          { axis: "Strategy", value: data["Strategy"] / 100 },
         ],
         color: "#FF5733",
         name: speech.name
       };
-      
       setRadarData(formattedData);
     } catch (err) {
       console.error("Error fetching radar data:", err);
@@ -165,7 +164,7 @@ const App = () => {
                 onChange={(e) => setQuestion(e.target.value)}
                 onKeyDown={handleKeyPress}
               />
-              <button style={styles.button} onClick={() => fetchResponse(question)}>Ask</button>
+              <button style={styles.button} onClick={() => fetchResponse(question, )}>Ask</button>
               <button style={styles.button} onClick={() => fetchResponse("Translate the speech to English")}>Translate</button>
               <button style={styles.button} onClick={() => fetchResponse("List the key points in the text and present the main ides using bullet points. skip  lines between facts")}>Key points</button>
             </div>
