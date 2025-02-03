@@ -43,12 +43,12 @@ function create_radar(svg_id, categories, data) {
     .style("stroke", "#999")
     .style("fill-opacity", 0.03)
     .style("transform", "scale(0)")
-    // .transition()
-    // .duration(500)
-    // .delay((d, i) => i * 100)
+    .transition()
+    .duration(500)
+    .delay((d, i) => i * 100)
     .style("transform", "scale(1.1)")
-    // .transition()
-    // .duration(200)
+    .transition()
+    .duration(200)
     .style("transform", "");
 
   // Axes avec animation
@@ -70,9 +70,9 @@ function create_radar(svg_id, categories, data) {
     .style("transform", (d, i) => `rotate(${(i * 180) / totalAxes}deg)`)
     .style("transform-origin", "0 0")
     .style("opacity", "0")
-    // .transition()
-    // .duration(500)
-    // .delay((d, i) => i * 15 + 700)
+    .transition()
+    .duration(500)
+    .delay((d, i) => i * 15 + 700)
     .style("opacity", "1")
     .style("transform", "rotate(0deg)");
 
@@ -85,8 +85,8 @@ function create_radar(svg_id, categories, data) {
     .text((d) => d.replaceAll("_", " "))
     .style("font-size", "11px")
     .style("opacity", "0")
-    // .transition()
-    // .delay((d, i) => i * 60 + 500)
+    .transition()
+    .delay((d, i) => i * 60 + 500)
     .style("opacity", "1");
 }
 
@@ -120,6 +120,7 @@ function RadarChart({ data }) {
       .attr("height", height)
       .append("g")
       .attr("transform", `translate(${width / 2}, ${height / 2})`);
+      
 
     // Clear previous chart before drawing the new one
     svg.selectAll("*").remove();
@@ -131,7 +132,6 @@ function RadarChart({ data }) {
       .append("g")
       .attr("class", "radarWrapper");
 
- 
     blobWrapper
       .append("path")
       .attr("class", "radarArea")
@@ -155,6 +155,7 @@ function RadarChart({ data }) {
       })
       .append("title")
       .text((d) => d.name);
+      
   }, [data]);
 
   return <svg ref={svgRef}></svg>;
