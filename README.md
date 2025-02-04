@@ -1,5 +1,13 @@
 ### Meta AI Llama Hackathon Oslo 
 
+## LL-Impact
+
+This LLama-powered tool assists legislators and diplomats by generating insights to support negotiation and policy decisions.
+
+Developed by Team LLip—Eddie Groh, Mathieu Antonopoulos, Baptiste Geisenberger,  and Vijay Venkatesh Murugan —this project was entirely created whithin 24h as part of the Meta Llama 2025 Hackathon in Oslo.
+
+Special thanks to Cerebral Valley for hosting the event and to Nebius for sponsoring and providing the computing power to run our model.
+
 ## File Structure
 
 ```
