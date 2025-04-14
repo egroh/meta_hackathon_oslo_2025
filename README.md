@@ -1,29 +1,40 @@
-### Meta AI Llama Hackathon Oslo 
+![LL-Impact Logo](./images/ll-impact_logo.png)
 
-## LL-Impact
+A LLaMA-powered assistant for legislators and diplomats, designed to generate insights that support negotiation and policy-making.
 
-This LLama-powered tool assists legislators and diplomats by generating insights to support negotiation and policy decisions.
+Built in just 24 hours by Team LLip—Eddie Groh, Mathieu Antonopoulos, Baptiste Geisenberger, and Vijay Venkatesh Murugan—as part of the **Meta AI LLaMA Hackathon 2025 in Oslo**.
 
-Developed by Team LLip—Eddie Groh, Mathieu Antonopoulos, Baptiste Geisenberger,  and Vijay Venkatesh Murugan —this project was entirely created whithin 24h as part of the Meta Llama 2025 Hackathon in Oslo.
+---
 
-Special thanks to Cerebral Valley for hosting the event and to Nebius for sponsoring and providing the computing power to run our model.
+## 🔍 What It Does
 
-## File Structure
+LL-Impact leverages the capabilities of Meta’s LLaMA model to:
+
+- Analyze legislative texts, verbatims, and articles  
+- Extract key arguments and narratives  
+- Support informed decisions in complex negotiations  
+
+---
+
+## 📁 Project Structure
 
 ```
-├── dataset/                      # Directory for storing datasets used in model training and argumentation
-│   ├── articles/                 # Collection of articles for NLP processing and analysis
-│   ├── verbatims/                # Raw text data, user inputs, or transcripts for argumentation
-│
-├── my-llama-demo/                # Main project directory
-│   ├── backend/                  # Backend logic and API handling for Llama model interactions
-│   ├── frontend/                 # UI components and visualization tools for the project
-│
-├── backend.py                    # Core backend script to handle Llama chat functionality
-├── basic_usage_example.ipynb     # Jupyter Notebook demonstrating basic usage of the model
-├── llama_index.ipynb             # Notebook showcasing indexing and retrieval functionalities
-├── project_UI.py                 # Script for the graphical or command-line user interface
-│
-├── .gitignore                    # File specifying which files and folders to ignore in Git tracking
-├── .DS_Store                     # MacOS system-generated file (safe to delete)
+├── dataset/                      # Data used for training and argumentation  
+│   ├── articles/                 # Curated articles for NLP analysis  
+│   └── verbatims/               # Transcripts and user-generated inputs  
+│  
+├── my-llama-demo/                # Main project directory  
+│   ├── backend/                  # API logic and model communication  
+│   └── frontend/                 # UI components and visualization tools  
+│  
+├── backend.py                    # Core backend handler for LLaMA interactions  
+├── basic_usage_example.ipynb     # Sample notebook showcasing basic usage  
+├── llama_index.ipynb             # Indexing and retrieval demonstrations  
+├── project_UI.py                 # Graphical/CLI interface script  
+│  
+└── .gitignore                    # Git exclusions  
 ```
+
+---
+
+_Special thanks to Cerebral Valley for hosting, and to Nebius for providing the compute power that made this possible._
